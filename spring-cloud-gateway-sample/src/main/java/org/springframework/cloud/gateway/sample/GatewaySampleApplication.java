@@ -99,6 +99,31 @@ public class GatewaySampleApplication {
 									})
 					).uri(uri)
 				)
+				.route("rewrite_empty_response", r -> r.host("*.rewriteemptyresponse.org")
+					.filters(f -> f.prefixPath("/httpbin")
+							.addResponseHeader("X-TestHeader", "rewrite_empty_response")
+							.modifyResponseBody(String.class, String.class,
+									(exchange, s) -> {
+										if (s == null) {
+											return Mono.just("emptybody");
+										}
+										return Mono.just(s.toUpperCase());
+									})
+
+					).uri(uri)
+				)
+				.route("rewrite_response_fail_supplier", r -> r.host("*.rewriteresponsewithfailsupplier.org")
+					.filters(f -> f.prefixPath("/httpbin")
+							.addResponseHeader("X-TestHeader", "rewrite_response_fail_supplier")
+							.modifyResponseBody(String.class, String.class,
+									(exchange, s) -> {
+										if (s == null) {
+											return Mono.error(new IllegalArgumentException("this should not happen"));
+										}
+										return Mono.just(s.toUpperCase());
+									})
+					).uri(uri)
+				)
 				.route("rewrite_response_obj", r -> r.host("*.rewriteresponseobj.org")
 					.filters(f -> f.prefixPath("/httpbin")
 							.addResponseHeader("X-TestHeader", "rewrite_response_obj")
@@ -132,18 +157,16 @@ public class GatewaySampleApplication {
 
 	@Bean
 	public RouterFunction<ServerResponse> testFunRouterFunction() {
-		RouterFunction<ServerResponse> route = RouterFunctions.route(
-				RequestPredicates.path("/testfun"),
-				request -> ServerResponse.ok().body(BodyInserters.fromObject("hello")));
+		RouterFunction<ServerResponse> route = RouterFunctions.route(RequestPredicates.path("/testfun"),
+				request -> ServerResponse.ok().body(BodyInserters.fromValue("hello")));
 		return route;
 	}
 
 	@Bean
 	public RouterFunction<ServerResponse> testWhenMetricPathIsNotMeet() {
-		RouterFunction<ServerResponse> route = RouterFunctions.route(
-				RequestPredicates.path("/actuator/metrics/gateway.requests"),
-				request -> ServerResponse.ok().body(BodyInserters
-						.fromObject(HELLO_FROM_FAKE_ACTUATOR_METRICS_GATEWAY_REQUESTS)));
+		RouterFunction<ServerResponse> route = RouterFunctions
+				.route(RequestPredicates.path("/actuator/metrics/gateway.requests"), request -> ServerResponse.ok()
+						.body(BodyInserters.fromValue(HELLO_FROM_FAKE_ACTUATOR_METRICS_GATEWAY_REQUESTS)));
 		return route;
 	}
 
